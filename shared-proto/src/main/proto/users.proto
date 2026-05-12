@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.chatapp.shared.grpc";
+
+// Definition av hur en användarprofil ser ut
+message UserProfileRequest {
+  string user_id = 1;
+}
+
+message UserProfileResponse {
+  string user_id = 1;
+  string username = 2;
+  string email = 3;
+}
+
+message LoginDetailsRequest {
+  string username = 1;
+}
+
+message LoginDetailsResponse {
+  string userId = 1;
+  string username = 2;
+  string password = 3;
+}
+
+// Definition av själva tjänsten (vårt API-kontrakt)
+service UserService {
+  rpc GetUserProfile (UserProfileRequest) returns (UserProfileResponse);
+  rpc GetLoginDetails (LoginDetailsRequest) returns (LoginDetailsResponse);
+}

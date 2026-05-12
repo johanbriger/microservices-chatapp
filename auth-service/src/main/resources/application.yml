@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: auth-service
+
+grpc:
+  client:
+    user-service:
+      address: 'static://localhost:9090'
+      negotiationType: plaintext
+
+# En hemlig nyckel för att signera våra JWT-tokens (Måste vara minst 32 tecken lång)
+jwt:
+  secret: "min-super-hemliga-nyckel-som-ingen-far-veta-om-12345"

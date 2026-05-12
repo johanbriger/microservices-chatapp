@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat App - Mikrotjänster</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; background-color: #f4f7f6; color: #333; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #chat-box { border: 1px solid #ddd; height: 400px; overflow-y: auto; padding: 15px; margin-bottom: 20px; background: #fafafa; border-radius: 4px; }
+        .msg { margin-bottom: 12px; padding: 8px; border-bottom: 1px solid #eee; }
+        .msg b { color: #2c3e50; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; margin-bottom: 10px; box-sizing: border-box; }
+        .flex-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        .flex-row input { width: 70%; margin-bottom: 0; }
+        button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #2980b9; }
+        .secondary-btn { background-color: #95a5a6; }
+        .user-info { font-size: 0.9em; color: #7f8c8d; margin-bottom: 20px; }
+        .auth-box { border: 1px solid #eee; padding: 20px; border-radius: 5px; margin-bottom: 20px; background: #f9f9f9; }
+        .toggle-link { color: #3498db; cursor: pointer; text-decoration: underline; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Distribuerad Chatt</h2>
+
+    <div id="login-section" class="auth-box">
+        <h3>Logga in</h3>
+        <input type="text" id="username" placeholder="Användarnamn" value="AliceCode">
+        <input type="password" id="password" placeholder="Lösenord" value="password123">
+        <button onclick="login()">Logga in</button>
+        <p>Inget konto? <span class="toggle-link" onclick="toggleAuth(false)">Registrera dig här</span></p>
+    </div>
+
+    <div id="register-section" class="auth-box" style="display:none;">
+        <h3>Skapa nytt konto</h3>
+        <input type="text" id="reg-username" placeholder="Välj användarnamn">
+        <input type="email" id="reg-email" placeholder="E-postadress">
+        <input type="password" id="reg-password" placeholder="Välj lösenord">
+        <button style="background-color: #2ecc71;" onclick="register()">Skapa konto</button>
+        <p>Har du redan ett konto? <span class="toggle-link" onclick="toggleAuth(true)">Logga in här</span></p>
+    </div>
+
+    <div id="chat-section" style="display:none;">
+        <div class="user-info" id="user-display"></div>
+        <div id="chat-box"></div>
+        <div class="flex-row">
+            <input type="text" id="message-text" placeholder="Skriv ett meddelande...">
+            <button onclick="sendMessage()">Skicka</button>
+            <button class="secondary-btn" onclick="loadHistory()">↻</button>
+        </div>
+        <button class="secondary-btn" onclick="location.reload()">Logga ut</button>
+    </div>
+</div>
+
+<script>
+    let jwtToken = "";
+    let currentUserId = "";
+    let currentUsername = "";
+    const BASE_URL = "http://localhost:8080";
+
+    function toggleAuth(showLogin) {
+        document.getElementById('login-section').style.display = showLogin ? 'block' : 'none';
+        document.getElementById('register-section').style.display = showLogin ? 'none' : 'block';
+    }
+
+    function parseJwt(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (e) { return null; }
+    }
+
+    async function register() {
+        const payload = {
+            username: document.getElementById('reg-username').value,
+            email: document.getElementById('reg-email').value,
+            password: document.getElementById('reg-password').value
+        };
+
+        try {
+            // Anropar din nya orkestrerade endpoint i bff-service
+            const res = await fetch(`${BASE_URL}/api/bff/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("Konto skapat! Du kan nu logga in.");
+                toggleAuth(true);
+            } else {
+                const err = await res.text();
+                alert("Fel: " + err);
+            }
+        } catch (err) {
+            alert("Kunde inte nå BFF-service");
+        }
+    }
+
+    async function login() {
+        try {
+            const res = await fetch(`${BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                })
+            });
+
+            if (!res.ok) throw new Error("Inloggning misslyckades");
+
+            const data = await res.json();
+            jwtToken = data.accessToken;
+
+            const decoded = parseJwt(jwtToken);
+            currentUserId = decoded.sub;
+            currentUsername = decoded.username || decoded.sub;
+
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('register-section').style.display = 'none';
+            document.getElementById('chat-section').style.display = 'block';
+            document.getElementById('user-display').innerText = `Inloggad som: ${currentUsername} (ID: ${currentUserId})`;
+
+            loadHistory();
+        } catch (err) { alert(err.message); }
+    }
+
+    async function loadHistory() {
+        const res = await fetch(`${BASE_URL}/messages/history`, {
+            headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+        const messages = await res.json();
+        const box = document.getElementById('chat-box');
+        box.innerHTML = messages.map(m => `
+            <div class="msg">
+                <b>${m.senderUsername}</b> <small style="color: #999">${new Date(m.timestamp).toLocaleTimeString()}</small><br>
+                ${m.content}
+            </div>
+        `).join('');
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const content = document.getElementById('message-text').value;
+        if (!content) return;
+
+        await fetch(`${BASE_URL}/messages/send?userId=${currentUserId}&content=${encodeURIComponent(content)}`, {
+            headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+
+        document.getElementById('message-text').value = '';
+        loadHistory();
+    }
+</script>
+</body>
+</html>
