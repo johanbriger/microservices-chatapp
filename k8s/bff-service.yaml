@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bff-service
-          image: chatapp-bff:latest
+          image: chatapp-bff:v3
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
