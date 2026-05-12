@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot-service
+  template:
+    metadata:
+      labels:
+        app: bot-service
+    spec:
+      containers:
+        - name: bot-service
+          image: chatapp-bot:v2
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: chatapp-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bot-service
+spec:
+  selector:
+    app: bot-service
+  ports:
+    - port: 8084
+      targetPort: 8084

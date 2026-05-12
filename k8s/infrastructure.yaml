@@ -1,0 +1,59 @@
+# 1. Gemensamma inställningar för alla tjänster
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chatapp-config
+data:
+  # Host-namn för tjänsterna (matchar namnen på våra Services nedan)
+  RABBITMQ_HOST: "rabbitmq-service"
+  USER_SERVICE_HOST: "user-service"
+  AUTH_SERVICE_HOST: "auth-service"
+  MESSAGE_SERVICE_HOST: "message-service"
+  USER_SERVICE_GRPC_HOST: "user-service"
+  # Portar
+  RABBITMQ_PORT: "5672"
+  USER_SERVICE_GRPC_PORT: "9090"
+  # JWT Hemlighet (I produktion används 'Secret', men ConfigMap duger för labben)
+  JWT_SECRET: "min-super-hemliga-nyckel-som-ingen-far-veta-om-12345"
+
+---
+
+# 2. RabbitMQ Deployment (Själva servern)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management # Inkluderar webb-gränssnitt
+          ports:
+            - containerPort: 5672 # AMQP (trafik)
+            - containerPort: 15672 # Management UI (webb)
+
+---
+
+# 3. RabbitMQ Service (Gör servern nåbar i nätverket)
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: http
+      port: 15672
+      targetPort: 15672
