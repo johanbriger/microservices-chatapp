@@ -2,6 +2,7 @@ package com.chatapp.botservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.util.Map;
@@ -11,7 +12,9 @@ public class ChatBotListener {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper(); // För att tolka JSON
-    private final String MESSAGE_SERVICE_URL = "http://localhost:8082/messages/send";
+
+    @Value("${services.messenger.url}")
+    private String messageServiceUrl;
 
     @RabbitListener(queues = "message-published-queue")
     public void handleMessage(String messageJson) { // Ta emot String istället för Map
@@ -36,7 +39,7 @@ public class ChatBotListener {
 
     private void sendResponse(String text) {
         try {
-            String url = MESSAGE_SERVICE_URL + "?userId=bot-001&content=" + text;
+            String url = messageServiceUrl + "/messages/send?userId=bot-001&content=" + text;
             restTemplate.getForObject(url, String.class);
         } catch (Exception e) {
             System.err.println("Boten kunde inte svara: " + e.getMessage());

@@ -1,5 +1,6 @@
 package com.chatapp.bff.controller; // Uppdaterat paketnamn
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -13,14 +14,17 @@ public class BffController {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @Value("${services.user.url}")
+    private String userServiceUrl;
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> registrationData) {
         // BFF orkestrerar anropet till User Service
         // User Service hanterar lagring i UserDB
-        String userServiceUrl = "http://localhost:8081/users/register";
+        String fullUrl = userServiceUrl + "/users/register";
 
         try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(userServiceUrl, registrationData, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(fullUrl, registrationData, Map.class);
             return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
