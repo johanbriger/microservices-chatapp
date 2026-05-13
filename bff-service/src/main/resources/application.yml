@@ -27,8 +27,6 @@ spring:
           uri: http://${MESSAGE_SERVICE_HOST:localhost}:8082
           predicates:
             - Path=/messages/**
-          filters:
-            - AuthenticationFilter
 
         - id: user-service
           uri: http://${USER_SERVICE_HOST:localhost}:8081
@@ -39,10 +37,15 @@ spring:
           uri: http://${AUTH_SERVICE_HOST:localhost}:8083
           predicates:
             - Path=/auth/**
+          filters:
+            - RewritePath=/auth/(?<segment>.*), /$\{segment}
 
-  # JWT-inställningar
-  jwt:
-    secret: "min-super-hemliga-nyckel-som-ingen-far-veta-om-12345"
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://${AUTH_SERVICE_HOST:localhost}:8083
+
 
 # Dessa värden används av din Java-kod via @Value("${services.user.url}")
 services:

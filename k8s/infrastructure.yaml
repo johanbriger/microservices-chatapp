@@ -13,8 +13,6 @@ data:
   # Portar
   RABBITMQ_PORT: "5672"
   USER_SERVICE_GRPC_PORT: "9090"
-  # JWT Hemlighet (I produktion används 'Secret', men ConfigMap duger för labben)
-  JWT_SECRET: "min-super-hemliga-nyckel-som-ingen-far-veta-om-12345"
 
 ---
 

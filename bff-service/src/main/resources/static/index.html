@@ -26,9 +26,8 @@
 
     <div id="login-section" class="auth-box">
         <h3>Logga in</h3>
-        <input type="text" id="username" placeholder="Användarnamn" value="AliceCode">
-        <input type="password" id="password" placeholder="Lösenord" value="password123">
-        <button onclick="login()">Logga in</button>
+        <p>Använd vårt säkra system för att logga in på chatten.</p>
+        <button onclick="login()">Logga in med ChatAuth</button>
         <p>Inget konto? <span class="toggle-link" onclick="toggleAuth(false)">Registrera dig här</span></p>
     </div>
 
@@ -58,10 +57,79 @@
     let currentUserId = "";
     let currentUsername = "";
     const BASE_URL = window.location.origin;
+    const CLIENT_ID = "chat-client";
+    // Obs: I produktion bör redirect_uri matchas exakt i Auth-service config
+    const REDIRECT_URI = window.location.origin + "/"; 
 
     function toggleAuth(showLogin) {
         document.getElementById('login-section').style.display = showLogin ? 'block' : 'none';
         document.getElementById('register-section').style.display = showLogin ? 'none' : 'block';
+    }
+
+    // --- OAuth2 PKCE Hjälpfunktioner ---
+    function generateRandomString(length) {
+        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+        const values = crypto.getRandomValues(new Uint8Array(length));
+        return Array.from(values).map(x => possible[x % possible.length]).join('');
+    }
+
+    async function generateCodeChallenge(codeVerifier) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(codeVerifier);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return btoa(String.fromCharCode(...new Uint8Array(digest)))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // --- OAuth2 Flöde ---
+    async function login() {
+        const codeVerifier = generateRandomString(64);
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+        
+        // Spara verifieraren temporärt för att använda efter redirect
+        sessionStorage.setItem("code_verifier", codeVerifier);
+
+        const authUrl = `${BASE_URL}/auth/oauth2/authorize?` + 
+            `response_type=code&` +
+            `client_id=${CLIENT_ID}&` +
+            `scope=openid&` +
+            `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+            `code_challenge=${codeChallenge}&` +
+            `code_challenge_method=S256`;
+
+        window.location.href = authUrl;
+    }
+
+    async function handleAuthCallback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const codeVerifier = sessionStorage.getItem("code_verifier");
+
+        if (code && codeVerifier) {
+            try {
+                const payload = new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    client_id: CLIENT_ID,
+                    client_secret: 'secret', // Matchar din SecurityConfig {noop}secret
+                    code: code,
+                    redirect_uri: REDIRECT_URI,
+                    code_verifier: codeVerifier
+                });
+
+                const res = await fetch(`${BASE_URL}/auth/oauth2/token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: payload
+                });
+
+                const data = await res.json();
+                if (data.access_token) {
+                    setupSession(data.access_token);
+                    // Städa URL:en
+                    window.history.replaceState({}, document.title, "/");
+                }
+            } catch (err) { console.error("Token exchange misslyckades", err); }
+        }
     }
 
     function parseJwt(token) {
@@ -102,33 +170,18 @@
         }
     }
 
-    async function login() {
-        try {
-            const res = await fetch(`${BASE_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: document.getElementById('username').value,
-                    password: document.getElementById('password').value
-                })
-            });
+    function setupSession(token) {
+        jwtToken = token;
+        const decoded = parseJwt(jwtToken);
+        currentUserId = decoded.sub;
+        currentUsername = decoded.username || decoded.sub;
 
-            if (!res.ok) throw new Error("Inloggning misslyckades");
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('register-section').style.display = 'none';
+        document.getElementById('chat-section').style.display = 'block';
+        document.getElementById('user-display').innerText = `Inloggad som: ${currentUsername} (ID: ${currentUserId})`;
 
-            const data = await res.json();
-            jwtToken = data.accessToken;
-
-            const decoded = parseJwt(jwtToken);
-            currentUserId = decoded.sub;
-            currentUsername = decoded.username || decoded.sub;
-
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('register-section').style.display = 'none';
-            document.getElementById('chat-section').style.display = 'block';
-            document.getElementById('user-display').innerText = `Inloggad som: ${currentUsername} (ID: ${currentUserId})`;
-
-            loadHistory();
-        } catch (err) { alert(err.message); }
+        loadHistory();
     }
 
     async function loadHistory() {
@@ -157,6 +210,9 @@
         document.getElementById('message-text').value = '';
         loadHistory();
     }
+
+    // Vid start: kolla om vi precis kommit tillbaka från inloggning
+    handleAuthCallback();
 </script>
 </body>
 </html>
