@@ -57,7 +57,7 @@
     let jwtToken = "";
     let currentUserId = "";
     let currentUsername = "";
-    const BASE_URL = "http://chatapp.local";
+    const BASE_URL = window.location.origin;
 
     function toggleAuth(showLogin) {
         document.getElementById('login-section').style.display = showLogin ? 'block' : 'none';
