@@ -6,13 +6,32 @@ metadata:
 data:
   # Host-namn för tjänsterna (matchar namnen på våra Services nedan)
   RABBITMQ_HOST: "rabbitmq-service"
-  USER_SERVICE_HOST: "user-service"
-  AUTH_SERVICE_HOST: "auth-service"
-  MESSAGE_SERVICE_HOST: "message-service"
   USER_SERVICE_GRPC_HOST: "user-service"
+  AUTH_SERVICE_HOST: "auth-service"
+  USER_SERVICE_HOST: "user-service"
+  MESSAGE_SERVICE_HOST: "message-service"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: "user"
+  POSTGRES_PASSWORD: "password"
+
+  # I K8s Ingress används port 80 (standard), så vi tar bort :8080
+  AUTH_SERVER_ISSUER_URI: "http://chatapp.local/auth"
+  AUTH_SERVER_INTERNAL_JWK_URI: "http://auth-service:8083/auth/oauth2/jwks"
+
   # Portar
   RABBITMQ_PORT: "5672"
   USER_SERVICE_GRPC_PORT: "9090"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+data:
+  init.sql: |
+    CREATE DATABASE userdb;
+    CREATE DATABASE messagedb;
 
 ---
 
@@ -55,3 +74,49 @@ spec:
     - name: http
       port: 15672
       targetPort: 15672
+
+---
+
+# 4. PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: "user"
+            - name: POSTGRES_PASSWORD
+              value: "password"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-init-volume
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: postgres-init-volume
+          configMap:
+            name: postgres-init-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

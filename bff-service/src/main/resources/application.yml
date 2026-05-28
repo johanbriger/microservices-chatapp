@@ -1,57 +1,53 @@
 server:
   port: 8080
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: bff-service
   cloud:
     gateway:
-      globalcors:
-        add-to-remove-remote-address-header: true
-        cors-configurations:
-          '[/**]':
-            allowedOrigins: "*"
-            allowedMethods:
-              - GET
-              - POST
-              - OPTIONS
-            allowedHeaders: "*"
-
-      # Filter som ligger på gateway-nivå
       default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_LAST
+        # Detta filter tar bort dubbla headers som kan orsaka CORS-problem
+        - "DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers Vary Location, RETAIN_FIRST"
 
       # Routes för API Gateway
       routes:
         - id: message-service
-          uri: http://${MESSAGE_SERVICE_HOST:localhost}:8082
+          uri: http://${MESSAGE_SERVICE_HOST:message-service}:8082
           predicates:
             - Path=/messages/**
 
         - id: user-service
-          uri: http://${USER_SERVICE_HOST:localhost}:8081
+          uri: http://${USER_SERVICE_HOST:user-service}:8081
           predicates:
             - Path=/users/**
 
         - id: auth-service
-          uri: http://${AUTH_SERVICE_HOST:localhost}:8083
+          uri: http://${AUTH_SERVICE_HOST:auth-service}:8083
           predicates:
             - Path=/auth/**
-          filters:
-            - RewritePath=/auth/(?<segment>.*), /$\{segment}
+
+
 
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://${AUTH_SERVICE_HOST:localhost}:8083
+          jwk-set-uri: ${AUTH_SERVER_INTERNAL_JWK_URI:http://auth-service:8083/auth/oauth2/jwks}
 
 
 # Dessa värden används av din Java-kod via @Value("${services.user.url}")
 services:
   auth:
-    url: http://${AUTH_SERVICE_HOST:localhost}:8083
+    url: http://${AUTH_SERVICE_HOST:auth-service}:8083
   user:
-    url: http://${USER_SERVICE_HOST:localhost}:8081
+    url: http://${USER_SERVICE_HOST:user-service}:8081
   message:
-    url: http://${MESSAGE_SERVICE_HOST:localhost}:8082
+    url: http://${MESSAGE_SERVICE_HOST:message-service}:8082
+
+logging:
+  level:
+    org.springframework.security: TRACE
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.web.cors: TRACE

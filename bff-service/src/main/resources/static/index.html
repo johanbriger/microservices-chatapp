@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Chat App - Mikrotjänster</title>
+    <!-- Lägg till detta bibliotek för att generera SHA-256 hashar i miljöer utan HTTPS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; background-color: #f4f7f6; color: #333; }
         .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -74,6 +76,13 @@
     }
 
     async function generateCodeChallenge(codeVerifier) {
+        // Fallback: Om crypto.subtle saknas (vanligt vid körning via http://chatapp.local)
+        // använder vi js-sha256 biblioteket istället.
+        if (!window.crypto || !window.crypto.subtle) {
+            const hash = sha256.arrayBuffer(codeVerifier);
+            return btoa(String.fromCharCode(...new Uint8Array(hash)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
         const encoder = new TextEncoder();
         const data = encoder.encode(codeVerifier);
         const digest = await crypto.subtle.digest('SHA-256', data);

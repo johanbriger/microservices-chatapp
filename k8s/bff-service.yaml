@@ -14,13 +14,25 @@ spec:
     spec:
       containers:
         - name: bff-service
-          image: chatapp-bff:v3
+          image: chatapp-bff:v4
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
           envFrom:
             - configMapRef:
                 name: chatapp-config
+          env:
+            # Mappar mot platshållarna i din application.yml
+            - name: AUTH_SERVER_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: chatapp-config
+                  key: AUTH_SERVER_ISSUER_URI
+            - name: AUTH_SERVER_INTERNAL_JWK_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: chatapp-config
+                  key: AUTH_SERVER_INTERNAL_JWK_URI
 ---
 apiVersion: v1
 kind: Service

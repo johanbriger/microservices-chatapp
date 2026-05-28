@@ -1,0 +1,20 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: bot-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+
+services:
+  messenger:
+    url: http://${MESSAGE_SERVICE_HOST:message-service}:8082
+
+logging:
+  level:
+    com.chatapp: DEBUG
+    

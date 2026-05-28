@@ -1,4 +1,4 @@
-package com.chatapp.bff.controller; // Uppdaterat paketnamn
+package com.chatapp.bff.controller;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +9,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bff")
-// @CrossOrigin(origins = "*")
 public class BffController {
 
     private final RestTemplate restTemplate = new RestTemplate();

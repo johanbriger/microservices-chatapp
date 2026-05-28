@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: chatapp-user:latest
+          image: chatapp-user:v2
           imagePullPolicy: Never # VIKTIGT: Letar lokalt i Minikube istället för Docker Hub
           ports:
             - containerPort: 8081 # HTTP
@@ -22,6 +22,16 @@ spec:
           envFrom:
             - configMapRef:
                 name: chatapp-config # Hämtar alla variabler från Steg 1
+          readinessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 25
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service

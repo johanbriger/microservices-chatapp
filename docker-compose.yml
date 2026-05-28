@@ -1,0 +1,124 @@
+
+services:
+  # Databasen - skapar automatiskt båda databaserna vid start
+  postgres:
+    image: postgres:16-alpine
+    container_name: chat-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: >
+      sh -c "(/usr/local/bin/docker-entrypoint.sh postgres &);
+      until pg_isready -U user -d postgres; do sleep 1; done;
+      psql -U user -d postgres -c 'CREATE DATABASE userdb;' || true;
+      psql -U user -d postgres -c 'CREATE DATABASE messagedb;' || true;
+      tail -f /dev/null"
+
+  # Meddelandekön
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: chat-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # Tjänst för användardata
+  user-service:
+    build: ./user-service
+    container_name: chat-user-service
+    ports:
+      - "8081:8081"
+      - "9090:9090"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8081"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+     postgres:
+       condition: service_healthy
+
+  # Tjänst för autentisering (OAuth2)
+  auth-service:
+    build: ./auth-service
+    container_name: chat-auth-service
+    ports:
+      - "8083:8083"
+    environment:
+      - USER_SERVICE_GRPC_HOST=user-service
+      - USER_SERVICE_GRPC_PORT=9090
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8083"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      user-service:
+        condition: service_healthy
+
+  # Tjänst för meddelanden
+  message-service:
+    build: ./message-service
+    container_name: chat-message-service
+    ports:
+      - "8082:8082"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - RABBITMQ_HOST=rabbitmq
+      - USER_SERVICE_GRPC_HOST=user-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+
+  # Backend-for-Frontend (Gateway)
+  bff-service:
+    build: ./bff-service
+    container_name: chat-bff-service
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTH_SERVICE_HOST=auth-service
+      - MESSAGE_SERVICE_HOST=message-service
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      message-service:
+        condition: service_started
+
+
+  # ChatBot
+  bot-service:
+    build: ./bot-service
+    container_name: chat-bot-service
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - MESSAGE_SERVICE_HOST=message-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      message-service:
+        condition: service_started

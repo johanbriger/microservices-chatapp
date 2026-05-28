@@ -1,16 +1,30 @@
 server:
   port: 8083
+  servlet:
+    context-path: /auth
+  session:
+    cookie:
+      secure: false
+  forward-headers-strategy: framework
 
 spring:
   application:
     name: auth-service
+  main:
+    allow-bean-definition-overriding: true
 
 grpc:
   client:
     user-service:
-      address: 'static://localhost:9090'
-      negotiationType: plaintext
+      address: 'static://${USER_SERVICE_GRPC_HOST:user-service}:${USER_SERVICE_GRPC_PORT:9090}'
+      negotiation-type: plaintext
 
-# En hemlig nyckel för att signera våra JWT-tokens (Måste vara minst 32 tecken lång)
-jwt:
-  secret: "min-super-hemliga-nyckel-som-ingen-far-veta-om-12345"
+logging:
+  level:
+    root: INFO
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: TRACE
+    org.springframework.web.cors: TRACE
+
+auth-server:
+  issuer-uri: ${AUTH_SERVER_ISSUER_URI:http://localhost:8080/auth}

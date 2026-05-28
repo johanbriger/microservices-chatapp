@@ -3,12 +3,28 @@ kind: Ingress
 metadata:
   name: chatapp-ingress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "http://chatapp.local"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
 spec:
+  ingressClassName: nginx
   rules:
     - host: chatapp.local
       http:
         paths:
+          # 1. /auth skickas direkt till auth-service på port 8083
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8083
+
+          # 2. Allt annat (frontenden / BFF) skickas till bff-service på port 8080
           - path: /
             pathType: Prefix
             backend:

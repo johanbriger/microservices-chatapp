@@ -35,7 +35,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                     "password456"
             ));
 
-            System.out.println(">> H2-databasen har initierats med testanvändare och lösenord!");
+            System.out.println(">> Postgres-databasen har initierats med testanvändare och lösenord!");
         }
     }
 }

@@ -9,6 +9,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -44,10 +45,14 @@ import java.util.UUID;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Value("${auth-server.issuer-uri}")
+    private String issuerUri;
+
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+        http.csrf(csrf -> csrf.disable());
         http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
             .oidc(Customizer.withDefaults());	// Explicit aktivering av OIDC
         
@@ -57,7 +62,7 @@ public class SecurityConfig {
                     new LoginUrlAuthenticationEntryPoint("/login")
                 )
             )
-            .cors(Customizer.withDefaults());
+            .cors(Customizer.withDefaults()); // Återaktivera CORS, låt BFF deduplicera
         return http.build();
     }
 
@@ -70,7 +75,7 @@ public class SecurityConfig {
             )
             .formLogin(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults());
+            .cors(Customizer.withDefaults()); // Återaktivera CORS, låt BFF deduplicera
         return http.build();
     }
 
@@ -78,13 +83,17 @@ public class SecurityConfig {
     public RegisteredClientRepository registeredClientRepository() {
         RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("chat-client")
-                .clientSecret("{noop}secret") // {noop} betyder plain text för labben
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST) // Tillåt hemlighet i POST-body (för index.html)
+                .clientSecret("{noop}secret")
+                .clientAuthenticationMethods(methods -> {
+                    methods.add(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+                    methods.add(ClientAuthenticationMethod.CLIENT_SECRET_POST);
+                })
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://chatapp.local/") 
+                .redirectUri("http://chatapp.local/")
                 .redirectUri("http://localhost:8080/") // Lägg till stöd för lokal körning
+                .redirectUri("http://chatapp.local") // Variant utan trailing slash
+                .redirectUri("http://localhost/") // VIKTIGT för K8s Ingress (port 80)
                 .scope("openid")
                 .build();
         return new InMemoryRegisteredClientRepository(oidcClient);
@@ -113,13 +122,16 @@ public class SecurityConfig {
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder().build();
+        return AuthorizationServerSettings.builder()
+                .issuer(issuerUri)
+                .build();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() { // Punkt 1: CORS-inställningar
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://chatapp.local", "http://localhost:8080"));
+        // BFF (Gateway) sköter den yttre säkerheten, här tillåter vi allt internt för att slippa 403:or
+        config.addAllowedOriginPattern("*");
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

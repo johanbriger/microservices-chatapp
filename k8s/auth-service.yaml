@@ -14,13 +14,30 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: chatapp-auth:v1
+          image: chatapp-auth:v2
           imagePullPolicy: Never
           ports:
             - containerPort: 8083
           envFrom:
             - configMapRef:
                 name: chatapp-config
+          env:
+            # Vi mappar explicit issuern så att Auth-tjänsten vet sin publika identitet
+            - name: AUTH_SERVER_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: chatapp-config
+                  key: AUTH_SERVER_ISSUER_URI
+          readinessProbe:
+            tcpSocket:
+              port: 8083
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
