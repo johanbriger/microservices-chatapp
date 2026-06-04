@@ -9,7 +9,7 @@ spring:
     gateway:
       default-filters:
         # Detta filter tar bort dubbla headers som kan orsaka CORS-problem
-        - "DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers Vary Location, RETAIN_FIRST"
+        - "DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Methods Access-Control-Allow-Headers Vary Location,RETAIN_FIRST"
 
       # Routes för API Gateway
       routes:

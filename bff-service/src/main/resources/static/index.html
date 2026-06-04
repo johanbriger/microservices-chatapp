@@ -24,12 +24,12 @@
 </head>
 <body>
 <div class="container">
-    <h2>Distribuerad Chatt</h2>
+    <h2>Chatt</h2>
 
     <div id="login-section" class="auth-box">
         <h3>Logga in</h3>
-        <p>Använd vårt säkra system för att logga in på chatten.</p>
-        <button onclick="login()">Logga in med ChatAuth</button>
+        <p>Logga in i chatten nedan.</p>
+        <button onclick="login()">Logga in</button>
         <p>Inget konto? <span class="toggle-link" onclick="toggleAuth(false)">Registrera dig här</span></p>
     </div>
 
@@ -119,7 +119,7 @@
                 const payload = new URLSearchParams({
                     grant_type: 'authorization_code',
                     client_id: CLIENT_ID,
-                    client_secret: 'secret', // Matchar din SecurityConfig {noop}secret
+                    client_secret: 'secret', // Matchar SecurityConfig {noop}secret
                     code: code,
                     redirect_uri: REDIRECT_URI,
                     code_verifier: codeVerifier
@@ -220,7 +220,6 @@
         loadHistory();
     }
 
-    // Vid start: kolla om vi precis kommit tillbaka från inloggning
     handleAuthCallback();
 </script>
 </body>

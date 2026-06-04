@@ -1,5 +1,6 @@
 package com.chatapp.bff.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,15 +12,15 @@ import java.util.Map;
 @RequestMapping("/api/bff")
 public class BffController {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Value("${services.user.url}")
     private String userServiceUrl;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> registrationData) {
-        // BFF orkestrerar anropet till User Service
-        // User Service hanterar lagring i UserDB
         String fullUrl = userServiceUrl + "/users/register";
 
         try {

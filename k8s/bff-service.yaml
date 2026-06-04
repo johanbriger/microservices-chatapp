@@ -44,5 +44,5 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 30080 # Gör att du kan nå den via minikube ip:30080
+      nodePort: 30080
   type: NodePort

@@ -15,7 +15,6 @@ spec:
     - host: chatapp.local
       http:
         paths:
-          # 1. /auth skickas direkt till auth-service på port 8083
           - path: /auth
             pathType: Prefix
             backend:
@@ -24,7 +23,6 @@ spec:
                 port:
                   number: 8083
 
-          # 2. Allt annat (frontenden / BFF) skickas till bff-service på port 8080
           - path: /
             pathType: Prefix
             backend:

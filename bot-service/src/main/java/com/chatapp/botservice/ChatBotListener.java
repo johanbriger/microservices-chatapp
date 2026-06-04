@@ -8,10 +8,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Service
 public class ChatBotListener {
 
+    private static final Logger logger = LoggerFactory.getLogger(ChatBotListener.class);
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper(); // För att tolka JSON
 
@@ -34,19 +38,20 @@ public class ChatBotListener {
 
             if ("ChatBot".equals(sender)) return;
 
-            System.out.println("Boten läste: " + content);
+            logger.info("Bot mottog meddelande från {}: {}" , sender, content);
 
-            if (content.toLowerCase().contains("hej") || content.toLowerCase().contains("bot")) {
-                sendResponse("Hallå där " + sender + "! Jag är boten som bor i RabbitMQ. Hur kan jag hjälpa dig?");
+
+            if (content.toLowerCase().contains("hjälp") || content.toLowerCase().contains("bot")) {
+                sendResponse("Hallå där " + sender + "! Jag är boten, hoppas allt är bra med dig, Kan jag hjälpa dig med något");
             }
         } catch (Exception e) {
-            System.err.println("Kunde inte tolka meddelandet: " + e.getMessage());
+            logger.error("Kunde inte tolka meddelandet: {}", e.getMessage());
         }
     }
 
     private void sendResponse(String text) {
         try {
-            // Använd UriComponentsBuilder för att automatiskt sköta URL-encoding (mellanslag blir %20 osv)
+
             String url = UriComponentsBuilder.fromHttpUrl(messageServiceUrl)
                     .path("/messages/send")
                     .queryParam("userId", "bot-001")
@@ -56,7 +61,7 @@ public class ChatBotListener {
 
             restTemplate.getForObject(url, String.class);
         } catch (Exception e) {
-            System.err.println("Boten kunde inte svara: " + e.getMessage());
+            logger.error("Boten kunde inte svara: {}", e.getMessage());
         }
     }
 }

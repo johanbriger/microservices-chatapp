@@ -9,9 +9,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Service
 public class GrpcUserDetailsService implements UserDetailsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(GrpcUserDetailsService.class);
 
     @GrpcClient("user-service")
     private UserServiceGrpc.UserServiceBlockingStub userServiceStub;
@@ -30,7 +35,7 @@ public class GrpcUserDetailsService implements UserDetailsService {
                     response.getUserId()
             );
         } catch (Exception e) {
-            System.err.println("gRPC-fel vid inloggning: " + e.getMessage()); // Logga faktiska felet i konsolen
+            logger.error("gRPC-fel vid inloggning för användare {}: {}", username, e.getMessage());
             throw new UsernameNotFoundException("Användare hittades inte: " + username);
         }
     }

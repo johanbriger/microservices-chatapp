@@ -1,5 +1,6 @@
 package com.chatapp.messageservice.model;
 
+import jakarta.persistence.PrePersist;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,10 +20,10 @@ public class MessageEntity {
     private Long id;
 
     @Column(nullable = false)
-    private String senderId; // ID på avsändaren (t.ex. "user-111")
+    private String senderId; // ID på avsändaren
 
     @Column(nullable = false)
-    private String senderUsername; // Vi sparar även namnet för att slippa göra gRPC-anrop varje gång vi läser historik!
+    private String senderUsername;
 
     @Column(nullable = false, length = 1000)
     private String content;
@@ -33,6 +34,8 @@ public class MessageEntity {
     // Denna metod körs automatiskt precis innan objektet sparas i databasen
     @PrePersist
     protected void onCreate() {
-        this.timestamp = LocalDateTime.now();
+        if(this.timestamp == null) {
+            this.timestamp = LocalDateTime.now();
+        }
     }
 }

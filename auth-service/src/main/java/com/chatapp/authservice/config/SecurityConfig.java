@@ -25,10 +25,6 @@ import org.springframework.security.oauth2.server.authorization.token.JwtEncodin
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
@@ -130,7 +126,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // BFF (Gateway) sköter den yttre säkerheten, här tillåter vi allt internt för att slippa 403:or
+
         config.addAllowedOriginPattern("*");
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
@@ -148,7 +144,7 @@ public class SecurityConfig {
                 if (principal.getPrincipal() instanceof CustomUserDetails user) {
                     context.getClaims().claim("userId", user.getUserId());
                     context.getClaims().claim("username", user.getUsername());
-                    context.getClaims().subject(user.getUserId()); // Sätter sub till det riktiga ID:t
+                    context.getClaims().subject(user.getUserId());
                 }
             }
         };

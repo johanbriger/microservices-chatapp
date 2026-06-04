@@ -8,6 +8,5 @@ import java.util.List;
 
 @Repository
 public interface MessageRepository extends JpaRepository<MessageEntity, Long> {
-    // Vi lägger till en extra hjälpreda för att kunna hämta meddelanden i kronologisk ordning senare!
     List<MessageEntity> findAllByOrderByTimestampAsc();
 }

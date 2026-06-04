@@ -22,7 +22,6 @@ spec:
             - configMapRef:
                 name: chatapp-config
           env:
-            # Vi mappar explicit issuern så att Auth-tjänsten vet sin publika identitet
             - name: AUTH_SERVER_ISSUER_URI
               valueFrom:
                 configMapKeyRef:

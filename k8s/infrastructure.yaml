@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: chatapp-config
 data:
-  # Host-namn för tjänsterna (matchar namnen på våra Services nedan)
+  # Host-namn för tjänsterna (matchar namnen på Services nedan)
   RABBITMQ_HOST: "rabbitmq-service"
   USER_SERVICE_GRPC_HOST: "user-service"
   AUTH_SERVICE_HOST: "auth-service"
@@ -13,9 +13,8 @@ data:
   POSTGRES_HOST: "postgres-service"
   POSTGRES_PORT: "5432"
   POSTGRES_USER: "user"
+  POSTGRES_DB: "userdb"
   POSTGRES_PASSWORD: "password"
-
-  # I K8s Ingress används port 80 (standard), så vi tar bort :8080
   AUTH_SERVER_ISSUER_URI: "http://chatapp.local/auth"
   AUTH_SERVER_INTERNAL_JWK_URI: "http://auth-service:8083/auth/oauth2/jwks"
 
@@ -35,7 +34,7 @@ data:
 
 ---
 
-# 2. RabbitMQ Deployment (Själva servern)
+# 2. RabbitMQ Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -96,6 +95,8 @@ spec:
         - name: postgres
           image: postgres:16-alpine
           env:
+            - name: POSTGRES_DB
+              value: "postgres"
             - name: POSTGRES_USER
               value: "user"
             - name: POSTGRES_PASSWORD

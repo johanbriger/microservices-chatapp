@@ -5,40 +5,49 @@ import com.chatapp.messageservice.repository.MessageRepository;
 import com.chatapp.messageservice.service.UserClientService;
 import com.chatapp.shared.grpc.UserProfileResponse;
 import com.chatapp.messageservice.config.RabbitMQConfig;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/messages")
 public class MessageController {
 
-    @Autowired
-    private UserClientService userClientService;
+    private static final Logger logger = LoggerFactory.getLogger(MessageController.class);
 
-    @Autowired
-    private MessageRepository messageRepository;
+    private final UserClientService userClientService;
+    private final MessageRepository messageRepository;
+    private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
+   public MessageController(MessageRepository messageRepository,
+                            UserClientService userClientService,
+                            RabbitTemplate rabbitTemplate,
+                            ObjectMapper objectMapper){
+       this.messageRepository = messageRepository;
+       this.userClientService = userClientService;
+       this.rabbitTemplate = rabbitTemplate;
+       this.objectMapper = objectMapper;
+   }
 
     @GetMapping("/send")
     public String sendMessage(@RequestParam String userId, @RequestParam String content) {
 
+       logger.info("Försöker skicka meddelande för userID: {}", userId);
         try {
             MessageEntity message = new MessageEntity();
 
-            // --- BAKDÖRR FÖR BOTEN (VG-KRAV) ---
             if ("bot-001".equals(userId)) {
                 message.setSenderId("bot-001");
                 message.setSenderUsername("ChatBot"); // Hårdkodat namn för boten
                 message.setContent(content);
-                message.setTimestamp(LocalDateTime.now());
             }
             else {
-                // --- VANLIG LOGIK FÖR ANVÄNDARE (gRPC + Verifiering) ---
                 // 1. Anropa user-service via gRPC för att hämta användarens profil
                 UserProfileResponse userProfile = userClientService.getUserProfile(userId);
 
@@ -46,26 +55,27 @@ public class MessageController {
                 message.setSenderId(userProfile.getUserId());
                 message.setSenderUsername(userProfile.getUsername());
                 message.setContent(content);
-                message.setTimestamp(LocalDateTime.now());
             }
 
             // 3. Spara i message-services egna databas (MessageDB)
             MessageEntity savedMessage = messageRepository.save(message);
 
             // 4. Publicera händelsen till Message Queue
-            // Vi skickar händelsen som ett JSON-paket
-            String eventPayload = String.format(
-                    "{\"senderUsername\": \"%s\", \"content\": \"%s\", \"timestamp\": \"%s\"}",
-                    savedMessage.getSenderUsername(),
-                    savedMessage.getContent(),
-                    savedMessage.getTimestamp()
-            );
+
+            Map<String, Object> messageMap = new HashMap<>();
+            messageMap.put("senderUsername", savedMessage.getSenderUsername());
+            messageMap.put("content", savedMessage.getContent());
+            messageMap.put("timestamp", savedMessage.getTimestamp().toString());
+
+            String eventPayload = objectMapper.writeValueAsString(messageMap);
 
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.EXCHANGE_NAME,
                     "message.published",
                     eventPayload
             );
+
+            logger.info("Meddelande sparat och publicerat. ID: {}" , savedMessage.getId());
 
             return String.format(
                     "Meddelande sparat och händelse publicerad!\n" +
@@ -75,7 +85,7 @@ public class MessageController {
             );
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Kunde inte skicka meddelande: {}", e.getMessage());
             return "Kunde inte skicka meddelande: " + e.getMessage();
         }
     }
