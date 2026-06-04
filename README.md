@@ -64,7 +64,7 @@ Systemet är konfigurerat för att fungera med Ingress på domänen `chatapp.loc
 
 Applikationen nås på `http://chatapp.local`.
 
-## Systemflöden (Inför examination)
+## Systemflöden
 
 ### Inloggningsflöde (Synkront)
 1. Webbläsaren (Frontend) initierar inloggning via BFF.
